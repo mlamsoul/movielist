@@ -1,0 +1,13 @@
+{
+  "videoPaths": [
+    { "path": "d:\\video", "seen": false },
+    { "path": "\\\\nas\\archive", "seen": true }
+  ],
+  "videoDisks": [{ "path": "disques.txt", "seen": false }],
+  "downloadPaths": ["c:\\temp"],
+  "targetVideoPath": "d:\\video",
+  "targetEBookPath": "d:\\ebook",
+  "seriesBasePath": "d:\\series",
+  "archiveLetters": "ABC",
+  "archiveDiskPrefix": "ARCHIVE"
+}

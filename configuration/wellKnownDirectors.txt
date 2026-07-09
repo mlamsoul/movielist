@@ -1,0 +1,76 @@
+Al Gore
+Alejandro Jodorowsky
+Alexandre Sokourov
+Andrey Kravchuk
+Andrey Tarkovsky
+Charles Burnett
+Claude Lelouch
+Clint Eastwood
+Claude Zidi
+David Cronenberg
+David Lean
+David Lynch
+Doris Wishman
+Ethan Coen
+Fabien Lafait
+Federico Fellini
+François Ozon
+François Truffaut
+Fred Coppula
+George Lucas
+Hal Ashby
+Ingmar Bergman
+Jacques Audiard
+James Cameron
+Jean Renoir
+Joel Coen
+John Carpenter
+John B. Root
+Ken Loach
+Lars von Trier
+Luc Besson
+Marc Dorcel
+Marcel Carné
+Martin Scorsese
+Mario Bava
+Mauro Bolognini
+Michael Moore
+Michael Snow
+Michelangelo Antonioni
+Michel Gérard
+Mick Jagger
+Max Pécas
+Michel Lang
+Michel Caputo
+Michel Baudricourt /*=Caputo*/
+Michel Anthony /*=Caputo*/
+Paul Kerman /*=Caputo*/
+Paul Thomas Anderson
+Orson Welles
+Otto Preminger
+Pedro Almodóvar
+Quentin Tarantino
+Radley Metzger
+Ridley Scott
+Roman Polanski
+Ron Howard
+Robert Rodriguez
+Roberto Rossellini
+Russ Meyer
+Roy Andersson
+Sam Mendes
+Salvador Dalí
+Spike Lee
+Stanley Kubrick
+Stephen King
+Steven Soderbergh
+Steven Spielberg
+Sydney Lumet
+Terry Gilliam
+Tim Burton
+Tran Anh Hung
+Tobe Hooper
+Terrence Malick
+Wes Anderson
+Woody Allen
+Yann Arthus-Bertrand

@@ -1,0 +1,93 @@
+action
+ado
+adulte
+animation
+animation 3D
+anticipation
+apocalyptique
+arts martiaux
+aventure
+biopic
+biographie
+boxe
+burlesque
+cape et épée
+casse
+catastrophe
+christ
+comédie
+comédie burlesque
+comédie musicale
+comédie satirique
+court-métrage
+crime
+concert
+clip
+conte
+cyberpunk
+de mœurs
+documentaire
+docu-fiction
+drame
+drame juridique
+dystopique
+érotique
+énigme
+espionnage
+essai
+expérimental
+famille
+fantasy
+fantastique
+gangster
+giallo
+gore
+guerre
+halloween
+historique
+horreur
+manga
+marionette
+mélodrame
+mini-série
+motion capture
+musical
+mystère
+nanar
+noël
+noir
+noire
+parodie
+péplum
+polar
+policier
+politique
+post-apocalyptique
+propagande
+pseudo-documentaire
+psychologique
+reportage
+religion
+remake
+road movie
+romance
+sci-fi
+short
+show
+sketch
+slasher
+spectacle
+sport
+super-héros
+satire politique
+surréaliste
+suspense
+suite
+téléfilm
+thriller
+théâtre
+techno-thriller
+tragédie
+trilogie
+vaudeville
+western

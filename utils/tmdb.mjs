@@ -1,0 +1,30 @@
+export const tmdb = {
+  base: 'https://api.themoviedb.org/3',
+  image: 'https://media.themoviedb.org/t/p/original',
+  key: `api_key=${process.env.TMDB_KEY}`,
+  fr: 'language=fr-fr',
+  adult: 'include_adult=true',
+};
+tmdb.genre = {
+  12: 'aventure',
+  14: 'fantastique',
+  16: 'animation',
+  18: 'drame',
+  27: 'horreur',
+  28: 'action',
+  35: 'comédie',
+  36: 'historique',
+  37: 'western',
+  53: 'thriller',
+  80: 'crime',
+  99: 'documentaire',
+  878: 'sci-fi',
+  9648: 'mystère',
+  10402: 'musical',
+  10749: 'romance',
+  10751: 'famille',
+  10752: 'guerre',
+  10770: 'téléfilm',
+  xxx: 'adulte',
+};
+tmdb.cache = new Map();

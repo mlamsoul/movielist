@@ -1,0 +1,13 @@
+# dependencies
+node_modules/
+
+# local env files
+.env
+
+# local config files
+configuration/paths.json
+configuration/cleanReplacements.txt
+configuration/collectionactors.txt
+configuration/duplicateexceptions.txt
+configuration/seriesToCheck.txt
+configuration/videotagexceptions.txt
