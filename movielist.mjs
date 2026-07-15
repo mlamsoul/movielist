@@ -139,7 +139,6 @@ const prepSet = new Set(prepList);
 const excludedFoldersSet = new Set(excludedFolders);
 const duplicateExceptionsSet = new Set(duplicateExceptions);
 const collectionactors = Object.fromEntries(collectionActorsList.map((actor) => [actor, []]));
-//const actorsRE = new RegExp(collectionActorsList.join('|'));
 
 const plainlist = [];
 const fourklist = [];
@@ -305,7 +304,7 @@ async function fetchJSON(url) {
       runningRequests.delete(url);
     });
 
-  // On enregistre la Promise avant de la retourner
+  // save the Promise in the Map so that subsequent calls can use it
   runningRequests.set(url, requestPromise);
 
   write.output(`   ******${url}`);
@@ -543,9 +542,7 @@ async function writeToJsonArchive(jsonMap, jsonFile) {
     }
   }
   // write the json
-  await fs.writeFile(jsonFile, JSON.stringify(json, null, 3), {
-    mode: 0o755,
-  });
+  await fs.writeFile(jsonFile, JSON.stringify(json, null, 3), { mode: 0o755 });
 }
 
 async function readFromMetaCache(metaCache) {
@@ -593,6 +590,9 @@ async function readFromDiskArchive(videos, folder) {
 }
 
 function cleanTitle(title) {
+  console.log(`Cleaning title: ${title}`);
+  console.log(`Using cleanReplacements: ${cleanReplacements}`);
+  console.log(cleanReplacements.reduce((str, term) => str.replaceAll(term, ''), title));
   return cleanReplacements
     .reduce((str, term) => str.replaceAll(term, ''), title)
     .replaceAll(/Ã./g, (match) => String.fromCharCode(match.charCodeAt(1) + 64)) // https://www.i18nqa.com/debug/utf8-debug.html
@@ -1342,8 +1342,6 @@ async function main() {
   await Promise.all([collectVideoFromPaths(videos), collectVideoFromDisks(videos), collectVideoFromArchive(videos), readFromMetaCache(metaCache)]);
 
   const counter = await checkVideos(videos, metaCache);
-
-  //writeFileSync(join(documentRO, 'video.json'), inspect(videos, false, 3, false));
 
   await writeToMetaCache(metaCache);
 
