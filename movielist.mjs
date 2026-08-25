@@ -20,7 +20,8 @@ const documentRO = join(PATH_RO, DOCUMENT_PATH || 'document');
 const documentRW = join(PATH_RW, DOCUMENT_PATH || 'document');
 const write = new Writer(PATH_RO, PATH_RW);
 const configuration = process.env.CONFIGURATION_PATH || join(__dirname, 'configuration');
-const mediainfo = process.env.MEDIAINFO;
+const mediainfo = process.env.MEDIAINFO || 'C:\\mediainfo.exe';
+const mkvpropedit = process.env.MKVPROPEDIT || 'C:\\mkvpropedit.exe';
 
 const YEAR_TOLERANCE = 1;
 const skipPhysical = true;
@@ -590,9 +591,6 @@ async function readFromDiskArchive(videos, folder) {
 }
 
 function cleanTitle(title) {
-  console.log(`Cleaning title: ${title}`);
-  console.log(`Using cleanReplacements: ${cleanReplacements}`);
-  console.log(cleanReplacements.reduce((str, term) => str.replaceAll(term, ''), title));
   return cleanReplacements
     .reduce((str, term) => str.replaceAll(term, ''), title)
     .replaceAll(/Ã./g, (match) => String.fromCharCode(match.charCodeAt(1) + 64)) // https://www.i18nqa.com/debug/utf8-debug.html
@@ -853,7 +851,7 @@ async function generateSuggestion(dirtytitle, specs, subtitle) {
     /^(?<frontYear>((?:19|20)\d\d)|9\d)? ?((?<frenchTitle>[^(]+)\s*(\s*\(\s*(?<voTitle>.*?))*\s*(?<year>((?:19|20)\d\d)| 9\d).*|(?:(?!(19|20)\d\d)(?<voTitle2>.*)))/,
   );
   const isSerie = t.match(
-    /(?<serieTitle>.*?)\s*(?<serieDate1>(?:19|20)\d\d)?(?:\((?<originalSerieTitle>.*?)(?<serieDate2>(?:19|20)\d\d)?\))?\s*(?:S|saison )?(?<season>\d?\d) ?(?:x| x |E|xE|Ep| émission )(?<episode>\d?\d?\d)(.*(?<serieDate3>(?:19|20)\d\d)+|.*)/i,
+    /(?<serieTitle>.*?)\s*(?<serieDate1>(?:19|20)\d\d)?(?:\((?<originalSerieTitle>.*?)(?<serieDate2>(?:19|20)\d\d)?\))?\s*(?:S|saison )?(?<season>\d?\d) ?(?:x| x |E| épisode |xE|Ep| émission )(?<episode>\d?\d?\d)(.*(?<serieDate3>(?:19|20)\d\d)+|.*)/i,
   );
 
   if (!isMovie && !isSerie) return NO_SUGGESTION;
@@ -1012,6 +1010,8 @@ async function checkVideoTags(fullname, counter, metaCache) {
   Object.values(json.track).forEach((track) => {
     if (track['@type'] === 'General' && track.Title !== undefined) {
       write.output(color(BGred)`${counter.movie} ${setSizeTo(fullname, 200)}   Track(General) : ${track.Title}`);
+      write.output(`"${mkvpropedit}" "${fullname}" --tags all: --edit info --set title="" --edit track:v1 --set name=""`);
+      write.bat(`"${mkvpropedit}" "${fullname}" --tags all: --edit info --set title="" --edit track:v1 --set name=""`);
       metaCache.delete(fullname);
       counter.badmeta++;
     }
@@ -1020,6 +1020,8 @@ async function checkVideoTags(fullname, counter, metaCache) {
       // execption for video title (dual video)
       if (videoTagExceptions.some((e) => fullname.includes(e))) return;
       write.output(`${counter.movie} ${setSizeTo(fullname, 200)}   Track(Video) : ${track.Title}`);
+      write.output(`"${mkvpropedit}" "${fullname}" --tags all: --edit info --set title="" --edit track:v1 --set name=""`);
+      write.bat(`"${mkvpropedit}" "${fullname}" --tags all: --edit info --set title="" --edit track:v1 --set name=""`);
       metaCache.delete(fullname);
       counter.badmeta++;
     }
@@ -1131,7 +1133,34 @@ async function checkVideos(videos, metaCache) {
     for (const [movieKey, movieEntry] of sortedMovies) {
       const isWellFormed = movieKey.match(reAll);
 
-      if (isWellFormed === null && counter.bad < max && argsRE.test(movieEntry.get('fullname'))) {
+      if (isWellFormed === null) {
+        // Malformed movie
+        if (counter.bad < max) {
+          //        if (isWellFormed === null || (counter.bad < max && argsRE.test(movieEntry.get('fullname')))) {
+          const { suggestedName, id } = (await malformed(movieKey, movieEntry.get('fullname'), counter)) || {};
+
+          if (suggestedName !== undefined) {
+            await findCovers(suggestedName, suggestedName, counter, id);
+          }
+        }
+      } else {
+        // Well-formed movie
+        if (args.length > 0 && argsRE.test(movieEntry.get('fullname'))) {
+          // Treat as malformed if the fullname matches the argsRE
+          const { suggestedName, id } = (await malformed(movieKey, movieEntry.get('fullname'), counter)) || {};
+
+          if (suggestedName !== undefined) {
+            await findCovers(suggestedName, suggestedName, counter, id);
+          }
+        } else {
+          await displayWellFormed(movieKey, movieEntry, isWellFormed, counter, metaCache);
+          if (!hasCover(movieEntry.get('extension'))) {
+            await findCovers(movieKey, movieEntry.get('fullname'), counter);
+          }
+        }
+      }
+
+      /*       if (isWellFormed === null && counter.bad < max && argsRE.test(movieEntry.get('fullname'))) {
         //        if (isWellFormed === null || (counter.bad < max && argsRE.test(movieEntry.get('fullname')))) {
         const { suggestedName, id } = (await malformed(movieKey, movieEntry.get('fullname'), counter)) || {};
 
@@ -1139,11 +1168,12 @@ async function checkVideos(videos, metaCache) {
           await findCovers(suggestedName, suggestedName, counter, id);
         }
       } else {
+        //console.error(isWellFormed, counter.bad < max, movieKey, '/' + argsRE.source + '/');
         await displayWellFormed(movieKey, movieEntry, isWellFormed, counter, metaCache);
         if (!hasCover(movieEntry.get('extension'))) {
           await findCovers(movieKey, movieEntry.get('fullname'), counter);
         }
-      }
+      } */
     }
   }
   return counter;
@@ -1234,12 +1264,17 @@ async function moveNewFiles() {
   }
 }
 
-function generateReports() {
+function generateReports(metaCache) {
   // 1. Biggest and smallest files
 
   Object.entries(biggest).forEach(([res, list]) => {
     write.collactor(box`The ${list.length} biggest ${res} (${formatSize(list.reduce((a, b) => a + b.size, 0)).trimStart()})`);
-    list.toReversed().forEach(({ fullname, size }) => write.collactor(`${formatSize(size)} | ${fullname}`));
+
+    list.toReversed().forEach(({ fullname, size }) => {
+      const metaInfo = metaCache.get(fullname);
+      const duration = metaInfo?.track.find((t) => t['@type'] === 'General')?.Duration_String ?? '?';
+      write.collactor(`${formatSize(size)} | ${setSizeTo(duration, 11)} | ${fullname}`);
+    });
   });
 
   write.collactor(box`The ${smallest.length} smallest (${formatSize(smallest.reduce((a, b) => a + b.size, 0))})`);
@@ -1345,7 +1380,7 @@ async function main() {
 
   await writeToMetaCache(metaCache);
 
-  generateReports();
+  generateReports(metaCache);
 
   printFinalStats(counter, metaCache.size, startDate);
 

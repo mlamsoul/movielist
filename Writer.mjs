@@ -14,6 +14,7 @@ export class Writer {
     duplicate: 'movie-duplicate.txt',
     plainlist: 'movie-plainlist.txt.tmp',
     output: 'movie-output.txt.tmp',
+    bat: 'movie-propedit.bat',
   };
   #streams = [];
   #baseDir;
