@@ -11,6 +11,8 @@ import { tmdb } from './utils/tmdb.mjs';
 import { Writer } from './Writer.mjs';
 import { MovieSpecs } from './MovieSpecs.mjs';
 import { encode, decode } from '@msgpack/msgpack';
+// import { ChromaClient } from 'chromadb';
+// import { OllamaEmbeddingFunction } from '@chroma-core/ollama';
 
 const __dirname = import.meta.dirname;
 const execFileAsync = promisify(execFile);
@@ -354,13 +356,20 @@ const movieStyle = (titles) => Object.fromEntries(Object.entries(titles).map(([k
 
 const HOW_MANY = 40;
 const genData = (len, size) => Array.from({ length: len }, () => ({ fullname: '', size }));
-const biggest = Object.fromEntries(['4K', '1080p', 'SD'].map((res) => [res, genData(HOW_MANY, 0)]));
+
+const BIGGEST_GROUPS = {
+  '4K': ['4K'],
+  '1080p': ['1080p'],
+  'SD/720p': ['SD', '720p'],
+};
+const biggest = Object.fromEntries(Object.keys(BIGGEST_GROUPS).map((group) => [group, genData(HOW_MANY, 0)]));
+
 const smallest = genData(HOW_MANY, Number.MAX_VALUE);
 const duplicates = new Map();
 
 const fillBiggest = (fullname, size) => {
-  Object.entries(biggest).forEach(([res, list]) => {
-    if (fullname.includes(res) && size > list[0].size) {
+  Object.entries(biggest).forEach(([group, list]) => {
+    if (BIGGEST_GROUPS[group].some((tag) => fullname.includes(tag)) && size > list[0].size) {
       list.push({ fullname, size });
       list.sort((a, b) => a.size - b.size);
       list.shift();
@@ -992,7 +1001,6 @@ async function readMediaInfo(fullname, metaCache) {
   if (metaCache.has(fullname)) return metaCache.get(fullname);
 
   try {
-    // const child = spawnSync(`${mediainfo}`, [`${fullname}`, '-f', '--Output=JSON']);
     const { stdout } = await execFileAsync(mediainfo, [fullname, '-f', '--Output=JSON']);
     const json = JSON.parse(stdout).media;
     metaCache.set(fullname, json);
@@ -1046,10 +1054,17 @@ async function displayWellFormed(movieKey, movieEntry, { groups }, counter, meta
   //const location = fullname.replace(/(.*)\\(.*)/, '$1');
   const location = parse(fullname).dir;
 
+  // Read mediainfo for every video file so duration/encoding are available (not only mkv)
+  if (extension.some(isAMovie) && (await fileExists(fullname))) {
+    await readMediaInfo(fullname, metaCache);
+  }
+
+  // Tag cleanup is mkv-only (mkvpropedit)
   if (extension.includes('mkv')) {
     // || extension.includes('mp4')) { // && location.startsWith('E:\\')) {
     await checkVideoTags(fullname, counter, metaCache);
   }
+
   const metaInfo = metaCache.get(fullname);
   const duration = metaInfo?.track.find((t) => t['@type'] === 'General')?.Duration_String ?? '?';
   const encoding = metaInfo?.track.find((t) => t['@type'] === 'Video')?.Format_String;
@@ -1267,15 +1282,26 @@ async function moveNewFiles() {
 function generateReports(metaCache) {
   // 1. Biggest and smallest files
 
-  Object.entries(biggest).forEach(([res, list]) => {
-    write.collactor(box`The ${list.length} biggest ${res} (${formatSize(list.reduce((a, b) => a + b.size, 0)).trimStart()})`);
+  const printBiggest = (title, list) => {
+    write.collactor(box`The ${list.length} biggest ${title} (${formatSize(list.reduce((a, b) => a + b.size, 0)).trimStart()})`);
 
-    list.toReversed().forEach(({ fullname, size }) => {
+    list.forEach(({ fullname, size }) => {
       const metaInfo = metaCache.get(fullname);
       const duration = metaInfo?.track.find((t) => t['@type'] === 'General')?.Duration_String ?? '?';
       write.collactor(`${formatSize(size)} | ${setSizeTo(duration, 11)} | ${fullname}`);
     });
-  });
+  };
+
+  // All resolutions merged: drop empty placeholders, sort by size (desc), keep the same amount
+  const allBiggest = Object.values(biggest)
+    .flat()
+    .filter(({ fullname }) => fullname !== '')
+    .sort((a, b) => b.size - a.size)
+    .slice(0, HOW_MANY);
+  printBiggest('(all resolutions)', allBiggest);
+
+  // Then one list per resolution
+  Object.entries(biggest).forEach(([res, list]) => printBiggest(res, list.toReversed()));
 
   write.collactor(box`The ${smallest.length} smallest (${formatSize(smallest.reduce((a, b) => a + b.size, 0))})`);
   smallest.forEach(({ fullname, size }) => write.collactor(`${formatSize(size)} | ${fullname}`));
@@ -1367,6 +1393,73 @@ function printFinalStats(counter, metaCacheSize, startDate) {
   write.output(`${Math.ceil((counter.movie * (percViewed + 1)) / 100 - counter.seen)} movies to reach next ${percViewed + 1}%\n`);
 }
 
+// const num = (v) => (v === undefined ? undefined : Number(v)); // convert to number or undefined
+// const track = (method) => (meta, type) => meta?.track?.[method]((t) => t['@type'] === type) ?? (method === 'filter' ? [] : undefined);
+// const firstTrack = track('find'); // find the first track of a given type
+// const allTracks = track('filter'); // find all tracks of a given type
+
+// function toChromaRecord(category, movieKey, entry, meta) {
+//   const fullname = entry.get('fullname');
+//   const general = firstTrack(meta, 'General');
+//   const video = firstTrack(meta, 'Video');
+//   const audios = allTracks(meta, 'Audio');
+//   const subs = allTracks(meta, 'Text');
+
+//   const metadata = {
+//     fullname,
+//     category,
+//     seen: !!entry.get('seen'),
+//     size: entry.get('size'),
+//     mtime: entry.get('mtime')?.getTime(),
+//     duration_s: num(general?.Duration),
+//     width: num(video?.Width),
+//     height: num(video?.Height),
+//     video_format: video?.Format,
+//     hdr: video?.HDR_Format,
+//     audio_langs: audios
+//       .map((a) => a.Language)
+//       .filter(Boolean)
+//       .join(','),
+//     audio_formats: audios
+//       .map((a) => a.Format)
+//       .filter(Boolean)
+//       .join(','),
+//     sub_langs: subs
+//       .map((s) => s.Language)
+//       .filter(Boolean)
+//       .join(','),
+//   };
+//   // ChromaDB does not accept undefined values, so we remove any keys with undefined values from the metadata object
+//   for (const k of Object.keys(metadata)) if (metadata[k] === undefined) delete metadata[k];
+
+//   return { id: fullname, document: movieKey, metadata };
+// }
+
+// async function syncChromaDB(videos, metaCache, batchSize = 32) {
+//   const records = [];
+//   const chroma = new ChromaClient({ host: 'pxmx-docker', port: 8787 });
+//   const embedder = new OllamaEmbeddingFunction({ url: 'http://localhost:11434', model: 'bge-m3' });
+//   const collection = await chroma.getOrCreateCollection({
+//     name: 'movies-collection',
+//     embeddingFunction: embedder,
+//   });
+
+//   for (const [category, movies] of videos)
+//     for (const [movieKey, entry] of movies)
+//       // push each record to the records array
+//       records.push(toChromaRecord(category, movieKey, entry, metaCache.get(entry.get('fullname'))));
+
+//   for (let i = 0; i < records.length; i += batchSize) {
+//     const batch = records.slice(i, i + batchSize);
+//     // upsert the batch to the collection
+//     await collection.upsert({
+//       ids: batch.map((r) => r.id),
+//       documents: batch.map((r) => r.document),
+//       metadatas: batch.map((r) => r.metadata),
+//     });
+//   }
+// }
+
 async function main() {
   const startDate = performance.now();
   const videos = new Map();
@@ -1386,6 +1479,12 @@ async function main() {
 
   write.endAll();
   await write.renameTmpFiles();
+
+  // try {
+  //   await syncChromaDB(videos, metaCache);
+  // } catch (err) {
+  //   write.output(`ChromaDB sync failed: ${err.message}`);
+  // }
 }
 
 // Start the main function and handle any uncaught errors

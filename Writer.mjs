@@ -1,6 +1,7 @@
 import { createWriteStream } from 'fs';
 import { join } from 'path';
 import { format } from 'util';
+import { EOL } from 'os';
 import { rename } from 'node:fs/promises';
 
 export class Writer {
@@ -28,12 +29,16 @@ export class Writer {
     for (const [key, fileName] of Object.entries(this.#files)) {
       const stream = createWriteStream(join(this.#baseDir, fileName), { flags: 'w' });
       this.#streams.push(stream);
+
       this[key] = (arg1 = '', ...args) => {
         const message = String(arg1).replace(pathRO, pathRW);
-        const formatted = format('%s\n', message, ...args);
+        const formatted = format(`%s${EOL}`, message, ...args);
         if (stream.writable) stream.write(formatted);
         if (key === 'output') process.stdout.write(formatted);
       };
+      if (key === 'bat') {
+        this.bat('chcp 65001 1> nul');
+      }
     }
   }
 
@@ -49,6 +54,8 @@ export class Writer {
   }
 
   endAll() {
+    this.bat('pause');
+
     this.#streams.forEach((stream) => {
       if (stream.writable) stream.end();
     });
